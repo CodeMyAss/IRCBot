@@ -3,9 +3,15 @@
 use pocketmine\utils\TextFormat;
 
 class Bot{
+	public $dotResponds;
 	public $sk;
 	public $running = true;
+
 	public function __construct(){
+		$this->dotResponds = [
+			"takes away %s's dots so that he/she can find the candy house.",
+			"eats %s's dots because no one ever feeds it and it is very hungry."
+		];
 		$this->sk = stream_socket_client("tcp://chat.freenode.net:6667", $errno, $errstr, 10) or die($errstr);
 		$this->login();
 		$this->loop();
@@ -14,6 +20,8 @@ class Bot{
 		$this->send("NICK LegendsOfMCPE");
 		$this->send("USER LegendsOfMCPE 0 * :LegendsOfMCPE Bot");
 		$this->send("PRIVMSG NickServ :IDENTIFY LegendsOfMCPE " . PASSWORD);
+//		$this->send("PRIVMSG NickServ :RELEASE LegendsOfMCPE");
+//		$this->send("NICK LegendsOfMCPE");
 		$this->send("JOIN #LegendOfMCPE");
 	}
 	private function loop(){
@@ -26,7 +34,18 @@ class Bot{
 				$this->send("PONG $pong[1]");
 				continue;
 			}
-			if(preg_match("^(:[^ ]* )?([A-Za-z0-9]*)( (.*))?$", $line, $matches)){
+//			Utils::console(TextFormat::DARK_GREEN . "[DEBUG] Received line: $line");
+			$matches = [$line, ""];
+			$tmpLine = $line;
+			if(substr($line, 0, 1) === ":"){
+				$matches[1] = strstr($line, " ", true);
+				$tmpLine = substr($tmpLine, 1 + strlen($matches[1]));
+			}
+			$tokens = explode(" ", $tmpLine);
+			$matches[2] = array_shift($tokens);
+			$matches[3] = " " . implode(" ", $tokens);
+			$matches[4] = substr($matches[3], 1);
+			if(true /*and preg_match("^(:[^ ]* )?([A-Za-z0-9]*)( (.*))?$", $line, $matches)*/){
 				$cmd = $matches[2];
 				$args = isset($matches[4]) ? $matches[4]:"";
 				if(($pos = strpos($args, " :")) !== false){
@@ -45,7 +64,8 @@ class Bot{
 		return fwrite($this->sk, "$line\n", strlen($line) + 1) or die("Cannot send line $line");
 	}
 	public function receive(){
-		return trim(fgets($this->sk));
+		$line = trim(fgets($this->sk));
+		return $line;
 	}
 
 	public function processLine($cmd, $args, $prefix){
@@ -76,7 +96,6 @@ class Bot{
 			case "PRIVMSG":
 				$speaker = strstr($prefix, "!", true);
 				if($args[0] === "#LegendOfMCPE"){
-					Utils::console(TextFormat::WHITE . "<$speaker> $args[1]");
 					$this->onChat($args[0], $speaker, $args[1]);
 				}
 				else{
@@ -97,6 +116,7 @@ class Bot{
 		}
 	}
 	private function onChat($target, $speaker, $msg){
+		Utils::console(TextFormat::WHITE . "<$speaker> $msg");
 		foreach(["LegendsOfMCPE ", "LegendsOfMCPE: ", "LegendsOfMCPE, "] as $ping){
 			if(strpos($msg, $ping) === 0){
 				$this->onPing($target, $speaker, trim(substr($msg, strlen($ping))));
@@ -104,15 +124,16 @@ class Bot{
 			}
 		}
 		if(substr($msg, -3) === "..."){
-			$this->action($target, " eats $speaker's dots so that he can find the candy house.");
+			$this->action($target, array_rand($this->dotResponds));
 		}
 	}
 	public function onPing($source, $sender, $msg){
+		$hasPerm = in_array(strtolower($sender), ["pemapmodder", "ijoshuahd", "iksaku", "xktiverz", "tutuff", "ldx", "dutok"]);
 		$args = explode(" ", $msg);
 		$cmd = array_shift($args);
 		switch(strtolower($cmd)){
 			case "ping":
-				$this->ping($source, $sender, "Pong! Random text in case you're bored: {$this->queryURL("https://api.github.com/zen")}");
+				$this->ping($source, $sender, "Pong! Random text for you in case you're bored: " . Utils::queryURL("https://api.github.com/zen"));
 				break;
 			case "repo":
 				if(!isset($args[1])){
@@ -120,6 +141,14 @@ class Bot{
 					break;
 				}
 				$this->action($source, "wasn't taught how to browse from GitHub yet :( #BlamePEMapModder");
+				break;
+			case "die":
+				if(!$hasPerm){
+					$this->ping($source, $sender, "How do you think you are! Kill yourself!");
+					break;
+				}
+				$this->send("Fine. I resign.");
+				$this->running = false;
 				break;
 			default:
 				$this->action($source, "doesn't understand $sender's language. :(");
@@ -139,24 +168,5 @@ class Bot{
 	}
 	public function sendTo($target, $msg){
 		$this->send("PRIVMSG $target :$msg");
-	}
-	public function queryURL($url, $timeout = 5, $post = false, $args = []){
-		$res = curl_init($url);
-		curl_setopt($res, CURLOPT_HTTPHEADER, ["User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0 PocketMine-MP"]);
-		curl_setopt($res, CURLOPT_AUTOREFERER, true);
-		curl_setopt($res, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($res, CURLOPT_SSL_VERIFYHOST, 2);
-		curl_setopt($res, CURLOPT_POST, $post ? 1:0);
-		if($post){
-			curl_setopt($res, CURLOPT_POSTFIELDS, $args);
-		}
-		curl_setopt($res, CURLOPT_FORBID_REUSE, 1);
-		curl_setopt($res, CURLOPT_FRESH_CONNECT, 1);
-		curl_setopt($res, CURLOPT_FOLLOWLOCATION, true);
-		curl_setopt($res, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($res, CURLOPT_CONNECTTIMEOUT, (int) $timeout);
-		$result = curl_exec($res);
-		curl_close($res);
-		return $result;
 	}
 }
