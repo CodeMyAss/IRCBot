@@ -45,7 +45,7 @@ class Bot{
 			$matches[2] = array_shift($tokens);
 			$matches[3] = " " . implode(" ", $tokens);
 			$matches[4] = substr($matches[3], 1);
-			if(true /*and preg_match("^(:[^ ]* )?([A-Za-z0-9]*)( (.*))?$", $line, $matches)*/){
+			if(true /*and preg_match("/^(:[^ ]* )?([A-Za-z0-9]*)( (.*))?$/", $line, $matches)*/){
 				$cmd = $matches[2];
 				$args = isset($matches[4]) ? $matches[4]:"";
 				if(($pos = strpos($args, " :")) !== false){
@@ -128,7 +128,7 @@ class Bot{
 		}
 	}
 	public function onPing($source, $sender, $msg){
-		$hasPerm = in_array(strtolower($sender), ["pemapmodder", "ijoshuahd", "iksaku", "xktiverz", "tutuff", "ldx", "dutok"]);
+		$hasPerm = in_array(strtolower($sender), ["pemapmodder", "pemapmodder_", "pemapmodder__", "ijoshuahd", "iksaku", "xktiverz", "tutuff", "ldx", "dutok"]);
 		$args = explode(" ", $msg);
 		$cmd = array_shift($args);
 		switch(strtolower($cmd)){
@@ -144,7 +144,7 @@ class Bot{
 				break;
 			case "die":
 				if(!$hasPerm){
-					$this->ping($source, $sender, "How do you think you are! Kill yourself!");
+					$this->ping($source, $sender, "Who do you think you are! Kill yourself!");
 					break;
 				}
 				$this->send("Fine. I resign.");
