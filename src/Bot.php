@@ -203,10 +203,14 @@ class Bot{
 			$additionalMsg = str_replace("\n", "; ", $additionalMsg);
 		}
 		$output .= "$msg: $additionalMsg\n";
-		$files = $data["files"];
-		$adds = $files["additions"];
-		$dels = $files["deletions"];
-		$mods = $files["changes"];
+		$adds = 0;
+		$dels = 0;
+		$mods = 0;
+		foreach($data["files"] as $file){
+			$adds += $file["additions"];
+			$dels = $file["deletions"];
+			$mods = $file["changes"];
+		}
 		$output .= "+$adds -$dels ±$mods";
 		return $output;
 	}
