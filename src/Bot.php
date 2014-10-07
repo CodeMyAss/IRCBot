@@ -3,15 +3,13 @@
 use pocketmine\utils\TextFormat;
 
 class Bot{
-	public $dotResponds;
+	public $dotResponds = [
+		"takes away %s's dots so that he/she can find the candy house.",
+		"eats %s's dots because no one ever feeds it and it is very hungry."
+	];
 	public $sk;
 	public $running = true;
-
 	public function __construct(){
-		$this->dotResponds = [
-			"takes away %s's dots so that he/she can find the candy house.",
-			"eats %s's dots because no one ever feeds it and it is very hungry."
-		];
 		$this->sk = stream_socket_client("tcp://chat.freenode.net:6667", $errno, $errstr, 10) or die($errstr);
 		$this->login();
 		$this->loop();
@@ -117,6 +115,9 @@ class Bot{
 	}
 	private function onChat($target, $speaker, $msg){
 		Utils::console(TextFormat::WHITE . "<$speaker> $msg");
+		if(trim($msg) === "You're doing good work, LegendsOfMCPE!"){
+			$this->ping($target, $speaker, "Thank you for praising me!");
+		}
 		foreach(["LegendsOfMCPE ", "LegendsOfMCPE: ", "LegendsOfMCPE, "] as $ping){
 			if(strpos($msg, $ping) === 0){
 				$this->onPing($target, $speaker, trim(substr($msg, strlen($ping))));
@@ -124,7 +125,7 @@ class Bot{
 			}
 		}
 		if(substr($msg, -3) === "..."){
-			$this->action($target, array_rand($this->dotResponds));
+			$this->action($target, sprintf(array_values($this->dotResponds)[mt_rand(0, count($this->dotResponds) - 1)], $speaker));
 		}
 	}
 	public function onPing($source, $sender, $msg){
@@ -137,10 +138,39 @@ class Bot{
 				break;
 			case "repo":
 				if(!isset($args[1])){
-					$this->ping($source, $sender, "Usage: repo <repo> <last-commit | #<issue-id> | $<commit-sha>>");
+					$this->ping($source, $sender, "Usage: repo <repo> <last-commit [branch] | #<issue-id> | <commit-sha>>");
 					break;
 				}
-				$this->action($source, "wasn't taught how to browse from GitHub yet :( #BlamePEMapModder");
+				$repo = array_shift($args);
+				$arg1 = array_shift($args);
+				if($arg1 === "last-commit"){
+					if(!isset($args[0])){
+						if($data = Utils::queryJSON("https://api.github.com/repos/LegendOfMCPE/$repo") and
+							isset($data["default_branch"])){
+							$branch = $data["default_branch"];
+						}
+						else{
+							$this->ping($source, $sender, "Failed to get data about repo $repo!");
+							break;
+						}
+					}
+					else{
+						$branch = $args[0];
+					}
+					if($data = Utils::queryJSON("https://api.github.com/repos/LegendOfMCPE/$repo/branches/$branch") and
+						isset($data["commit"])){
+						$this->ping($source, $sender, $this->showCommitData($repo, $data["commit"]["sha"]));
+					}
+					else{
+						$this->ping($source, $sender, "Failed to get data about branch $branch of repo $repo!");
+					}
+				}
+				elseif(substr($arg1, 0, 1) !== "#"){
+					$this->ping($source, $sender, $this->showCommitData($repo, $arg1));
+				}
+				else{
+					$this->action($source, "wasn't taught how to browse issues from GitHub yet :( #BlamePEMapModder");
+				}
 				break;
 			case "die":
 				if(!$hasPerm){
@@ -149,11 +179,36 @@ class Bot{
 				}
 				$this->send("Fine. I resign.");
 				$this->running = false;
+				Utils::console("$sender killed me! :(");
 				break;
 			default:
 				$this->action($source, "doesn't understand $sender's language. :(");
 				break;
 		}
+	}
+	private function showCommitData($repo, $sha){
+		if(!is_array($data = Utils::queryJSON("https://api.github.com/repos/LegendOfMCPE/$repo/commits/$sha"))){
+			return "Cannot find commit $sha";
+		}
+		$shortSHA = substr($sha, 0, 7);
+		$author = $data["commit"]["author"]["name"];
+		$username = $data["author"]["login"];
+		$url = $data["html_url"];
+		$output = "Commit $shortSHA by $username ($author): $url\n";
+		$msg = $data["commit"]["message"];
+		$additionalMsg = "";
+		if(($pos = strpos($msg, "\n")) !== false){
+			$additionalMsg = trim(substr($msg, $pos));
+			$msg = substr($msg, 0, $pos);
+			$additionalMsg = str_replace("\n", "; ", $additionalMsg);
+		}
+		$output .= "$msg: $additionalMsg\n";
+		$files = $data["files"];
+		$adds = $files["additions"];
+		$dels = $files["deletions"];
+		$mods = $files["changes"];
+		$output .= "+$adds -$dels ±$mods";
+		return $output;
 	}
 	public function ping($target, $pinged, $msg){
 		if($target === $pinged){
@@ -166,7 +221,9 @@ class Bot{
 	public function action($target, $msg){
 		$this->sendTo($target, "\x01ACTION $msg\x01");
 	}
-	public function sendTo($target, $msg){
-		$this->send("PRIVMSG $target :$msg");
+	public function sendTo($target, $msgs){
+		foreach(explode("\n", $msgs) as $msg){
+			$this->send("PRIVMSG $target :$msg");
+		}
 	}
 }

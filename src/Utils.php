@@ -36,6 +36,13 @@ class Utils{
 		curl_close($res);
 		return $result;
 	}
+	public static function queryJSON($url, $timeout = 5, $post = false, $args = []){
+		if(($json = self::queryURL($url, $timeout, $post, $args)) and
+				$result = (array) json_decode($json, true)){
+			return $result;
+		}
+		return false;
+	}
 }
 
 echo "Checking timezone..." . PHP_EOL;
@@ -68,3 +75,6 @@ if(!ini_get("date.timezone")){
 		date_default_timezone_set($default_timezone);
 	}
 }
+
+$timezone = new DateTimeZone(date_default_timezone_get());
+Utils::$timezoneDelta = $timezone->getOffset(new DateTime());
