@@ -6,4 +6,4 @@ require_once("Bot.php");
 
 new Bot;
 
-exit;
+exec("pause");
