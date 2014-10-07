@@ -6,6 +6,7 @@ require_once("$path/secrets.php");
 require_once("$path/Utils.php");
 require_once("$path/Bot.php");
 
-new Bot;
+$bot = new Bot;
+$bot->start();
 
 exec("pause");

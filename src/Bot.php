@@ -2,14 +2,14 @@
 
 use pocketmine\utils\TextFormat;
 
-class Bot{
+class Bot extends Theead{
 	public $dotResponds = [
 		"takes away %s's dots so that he/she can find the candy house.",
 		"eats %s's dots because no one ever feeds it and it is very hungry."
 	];
 	public $sk;
 	public $running = true;
-	public function __construct(){
+	public function start(){
 		$this->sk = stream_socket_client("tcp://chat.freenode.net:6667", $errno, $errstr, 10) or die($errstr);
 		$this->login();
 		$this->loop();

@@ -1,7 +1,5 @@
 <?php
 
-require_once(dirname(__FILE__) . "/TextFormat.php");
-
 use pocketmine\utils\TextFormat;
 
 class Utils{
