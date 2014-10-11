@@ -2,7 +2,7 @@
 
 use pocketmine\utils\TextFormat;
 
-class Bot extends Theead{
+class Bot extends Thread{
 	public $dotResponds = [
 		"takes away %s's dots so that he/she can find the candy house.",
 		"eats %s's dots because no one ever feeds it and it is very hungry."
