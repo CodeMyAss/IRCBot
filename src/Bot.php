@@ -9,7 +9,7 @@ class Bot extends Thread{
 	];
 	public $sk;
 	public $running = true;
-	public function start(){
+	public function run(){
 		$this->sk = stream_socket_client("tcp://chat.freenode.net:6667", $errno, $errstr, 10) or die($errstr);
 		$this->login();
 		$this->loop();
